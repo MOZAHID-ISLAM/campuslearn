@@ -15,6 +15,8 @@
     <button data-tab="courses">Courses</button>
     <button data-tab="lessons">Lessons</button>
     <button data-tab="students">Students</button>
+    <button data-tab="enrollments">Enrolments</button>
+    <button data-tab="progress">Progress</button>
   </nav>
 </header>
 
@@ -74,8 +76,23 @@
     <ul id="student-list" class="list"></ul>
   </section>
 
+  <section id="tab-enrollments" class="tab" hidden>
+    <h2>Enrolments</h2>
+    <form id="form-enroll">
+      <label>Student <select id="enroll-student"></select></label>
+      <label>Course <select id="enroll-course"></select></label>
+      <button type="submit">Enrol student</button>
+    </form>
+    <div id="enrollment-list"></div>
+  </section>
 
 
+  <section id="tab-progress" class="tab" hidden>
+    <h2>Progress</h2>
+    <label>Student <select id="progress-student"></select></label>
+    <label>Course <select id="progress-course"></select></label>
+    <div id="progress-view"></div>
+  </section>
 </main>
 
 <footer>
