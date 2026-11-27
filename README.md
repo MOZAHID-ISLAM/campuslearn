@@ -8,6 +8,8 @@ This is my Lab 6 project for **CSE 3206 – Software Engineering Sessional (22 S
 
 [Open the live demo](https://mozahid-islam.github.io/campuslearn/)
 
+[![CI](https://github.com/MOZAHID-ISLAM/campuslearn/actions/workflows/ci.yml/badge.svg)](https://github.com/MOZAHID-ISLAM/campuslearn/actions/workflows/ci.yml)
+
 ## What it does
 
 CampusLearn has seven parts (modules):
