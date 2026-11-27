@@ -76,8 +76,16 @@
     var opts = store.data.courses.map(function (c) {
       return '<option value="' + c.id + '">' + esc(c.title) + '</option>';
     }).join("");
-    ["lesson-course"].forEach(function (id) {
+    ["lesson-course", "enroll-course", "progress-course"].forEach(function (id) {
       $(id).innerHTML = opts || "<option value=''>No courses yet</option>";
+    });
+  }
+  function fillStudentSelects() {
+    var opts = store.data.students.map(function (s) {
+      return '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    }).join("");
+    ["enroll-student", "progress-student"].forEach(function (id) {
+      $(id).innerHTML = opts || "<option value=''>No students yet</option>";
     });
   }
   function renderLessons() {
@@ -95,13 +103,49 @@
     }).join("") || "<li>No students yet.</li>";
   }
 
+  // ---- enrolments ------------------------------------------------------------------
+  function renderEnrollments() {
+    $("enrollment-list").innerHTML = store.data.enrollments.map(function (e) {
+      var lessons = store.data.lessons.filter(function (l) { return l.courseId === e.courseId; });
+      var boxes = lessons.map(function (l) {
+        var done = e.completedLessonIds.indexOf(l.id) !== -1;
+        return '<label><input type="checkbox" data-enroll="' + e.id + '" data-lesson="' + l.id + '"' +
+          (done ? ' checked' : '') + '> ' + esc(l.title) + '</label><br>';
+      }).join("");
+      return '<div class="card"><b>' + esc(studentName(e.studentId)) + '</b> — ' + esc(courseName(e.courseId)) +
+        '<br>Lessons finished:<br>' + (boxes || "No lessons in this course yet.") + '</div>';
+    }).join("") || "<p>No enrolments yet.</p>";
+    document.querySelectorAll("[data-enroll]").forEach(function (box) {
+      box.addEventListener("change", function () {
+        if (box.checked) store.completeLesson(box.dataset.enroll, box.dataset.lesson);
+      });
+    });
+  }
+
+  // ---- progress -----------------------------------------------------------------------
+  function renderProgress() {
+    var studentId = $("progress-student").value;
+    var courseId = $("progress-course").value;
+    if (!studentId || !courseId) { $("progress-view").innerHTML = "<p>Add a student and a course first.</p>"; return; }
+    var p = store.progress(studentId, courseId);
+    var pct = p.lessonsTotal === 0 ? 0 : Math.round((p.lessonsDone / p.lessonsTotal) * 100);
+    $("progress-view").innerHTML =
+      '<p><b>' + esc(studentName(studentId)) + '</b> in <b>' + esc(courseName(courseId)) + '</b></p>' +
+      '<p>Lessons: ' + p.lessonsDone + ' of ' + p.lessonsTotal + ' finished</p>' +
+      '<div class="bar"><div style="width:' + pct + '%"></div></div>' +
+      '<p>Quizzes taken: ' + p.quizzesTaken + ' — average score: ' + p.averageScore + '%</p>';
+  }
+
   // ---- all together ----------------------------------------------------------------------
   function renderAll() {
     renderDashboard();
     renderCourses();
     fillCourseSelects();
+    fillStudentSelects();
     renderLessons();
     renderStudents();
+    renderEnrollments();
+    renderProgress();
   }
   store.subscribe(renderAll);
 
@@ -143,6 +187,16 @@
       say("Student added.", true);
     } catch (err) { say(err.message, false); }
   });
+  $("form-enroll").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    try {
+      store.enroll($("enroll-student").value, $("enroll-course").value);
+      say("Student enrolled.", true);
+    } catch (err) { say(err.message, false); }
+  });
+  $("progress-student").addEventListener("change", renderProgress);
+  $("progress-course").addEventListener("change", renderProgress);
+
   // ---- data buttons --------------------------------------------------------------------------
   $("btn-demo").addEventListener("click", function () {
     var before = store.data.courses.length;

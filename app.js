@@ -198,6 +198,41 @@
     return this.data.students.find(function (s) { return s.id === id; });
   };
 
+  Store.prototype.enroll = function (studentId, courseId) {
+    const student = this.findStudent(studentId);
+    if (!student) throw new Error("No student with that id.");
+    const course = this.findCourse(courseId);
+    if (!course) throw new Error("No course with that id.");
+    const already = this.data.enrollments.some(function (e) {
+      return e.studentId === studentId && e.courseId === courseId;
+    });
+    if (already) throw new Error("This student is already enrolled in this course.");
+    const count = this.data.enrollments.filter(function (e) {
+      return e.courseId === courseId;
+    }).length;
+    if (count >= course.capacity) throw new Error("This course is full.");
+    const enrolment = {
+      id: newId("e"),
+      studentId: studentId,
+      courseId: courseId,
+      enrolledAt: today(),
+      completedLessonIds: [],
+    };
+    this.data.enrollments.push(enrolment);
+    this._changed();
+    return enrolment;
+  };
+
+  Store.prototype.completeLesson = function (enrollmentId, lessonId) {
+    const enrolment = this.data.enrollments.find(function (e) { return e.id === enrollmentId; });
+    if (!enrolment) throw new Error("No enrolment with that id.");
+    if (enrolment.completedLessonIds.indexOf(lessonId) === -1) {
+      enrolment.completedLessonIds.push(lessonId);
+      this._changed();
+    }
+    return enrolment;
+  };
+
   Store.prototype.deleteCourse = function (courseId) {
     const keep = function (list, test) { return list.filter(test); };
     this.data.courses = keep(this.data.courses, function (c) { return c.id !== courseId; });
@@ -220,6 +255,28 @@
     });
   };
 
+  Store.prototype.progress = function (studentId, courseId) {
+    const lessons = this.data.lessons.filter(function (l) { return l.courseId === courseId; });
+    const enrolment = this.data.enrollments.find(function (e) {
+      return e.studentId === studentId && e.courseId === courseId;
+    });
+    const done = enrolment ? enrolment.completedLessonIds.length : 0;
+    const quizIds = this.data.quizzes
+      .filter(function (q) { return q.courseId === courseId; })
+      .map(function (q) { return q.id; });
+    const attempts = this.data.attempts.filter(function (a) {
+      return a.studentId === studentId && quizIds.indexOf(a.quizId) !== -1;
+    });
+    const average = attempts.length === 0 ? 0 :
+      Math.round(attempts.reduce(function (sum, a) { return sum + a.result; }, 0) / attempts.length);
+    return {
+      lessonsDone: done,
+      lessonsTotal: lessons.length,
+      quizzesTaken: attempts.length,
+      averageScore: average,
+    };
+  };
+
   // Demo data, so the app is not empty the first time it is opened.
   Store.prototype.seedDemo = function () {
     if (this.data.courses.length > 0) return;
@@ -233,6 +290,10 @@
     const s1 = this.addStudent({ name: "Asha", email: "asha@example.com" });
     const s2 = this.addStudent({ name: "Rafi", email: "rafi@example.com" });
     const s3 = this.addStudent({ name: "Nila", email: "nila@example.com" });
+    this.enroll(s1.id, c1.id);
+    this.enroll(s1.id, c2.id);
+    this.enroll(s2.id, c1.id);
+    this.enroll(s3.id, c3.id);
   };
 
   // ---- Singleton: one shared store for the whole app -----------------------
