@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusLearn — Online Learning for Campus</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>CampusLearn</h1>
+  <p>Online learning for our campus: courses, lessons, students, enrolments, quizzes and progress, all in one place.</p>
+  <nav id="tabs">
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="courses">Courses</button>
+    <button data-tab="lessons">Lessons</button>
+    <button data-tab="students">Students</button>
+  </nav>
+</header>
+
+<main>
+  <p id="msg" role="status"></p>
+
+  <section id="tab-dashboard" class="tab">
+    <h2>Dashboard</h2>
+    <div id="counts" class="cards"></div>
+    <h3>Your data</h3>
+    <p>Your data is saved in this browser, so it is still here when you come back.</p>
+    <div class="row">
+      <button id="btn-demo">Load demo data</button>
+      <button id="btn-export">Download my data (JSON)</button>
+      <label class="file-btn">Bring back my data (JSON)
+        <input type="file" id="file-import" accept="application/json" hidden>
+      </label>
+      <button id="btn-reset" class="danger">Delete all my data</button>
+    </div>
+    <h3>Courses at a glance</h3>
+    <div id="dashboard-courses"></div>
+  </section>
+
+  <section id="tab-courses" class="tab" hidden>
+    <h2>Courses</h2>
+    <input id="course-search" type="search" placeholder="Search by title or teacher...">
+    <form id="form-course">
+      <input id="course-title" placeholder="Course title" required>
+      <input id="course-teacher" placeholder="Teacher name" required>
+      <input id="course-desc" placeholder="Short description">
+      <input id="course-capacity" type="number" min="1" value="30" title="How many students can join">
+      <button type="submit">Add course</button>
+    </form>
+    <ul id="course-list" class="list"></ul>
+  </section>
+
+  <section id="tab-lessons" class="tab" hidden>
+    <h2>Lessons</h2>
+    <label>Course
+      <select id="lesson-course"></select>
+    </label>
+    <form id="form-lesson">
+      <input id="lesson-title" placeholder="Lesson title" required>
+      <input id="lesson-content" placeholder="What is this lesson about?">
+      <button type="submit">Add lesson</button>
+    </form>
+    <ul id="lesson-list" class="list"></ul>
+  </section>
+
+  <section id="tab-students" class="tab" hidden>
+    <h2>Students</h2>
+    <form id="form-student">
+      <input id="student-name" placeholder="Student name" required>
+      <input id="student-email" type="email" placeholder="Email" required>
+      <button type="submit">Add student</button>
+    </form>
+    <ul id="student-list" class="list"></ul>
+  </section>
+
+
+
+</main>
+
+<footer>
+  <p>CampusLearn — CSE 3206 Software Engineering Sessional, Lab 6. Data stays in your browser.</p>
+</footer>
+
+<script src="app.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

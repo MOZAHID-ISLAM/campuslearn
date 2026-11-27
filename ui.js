@@ -1,0 +1,186 @@
+/* CampusLearn - the page logic (browser only).
+ * The rules live in app.js; this file only shows things, reads the forms,
+ * and tells the store what the user asked for. */
+(function () {
+  "use strict";
+  var CL = window.CampusLearn;
+  var store = CL.getStore();
+
+  function $(id) { return document.getElementById(id); }
+  function esc(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function say(text, ok) {
+    var m = $("msg");
+    m.textContent = text;
+    m.className = ok ? "ok" : "err";
+  }
+  function courseName(id) {
+    var c = store.findCourse(id);
+    return c ? c.title : "(deleted course)";
+  }
+  function studentName(id) {
+    var s = store.findStudent(id);
+    return s ? s.name : "(deleted student)";
+  }
+
+  // ---- tabs ---------------------------------------------------------------
+  document.querySelectorAll("#tabs button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("#tabs button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      document.querySelectorAll(".tab").forEach(function (s) { s.hidden = true; });
+      $("tab-" + btn.dataset.tab).hidden = false;
+    });
+  });
+
+  // ---- dashboard ------------------------------------------------------------
+  function renderDashboard() {
+    var d = store.data;
+    $("counts").innerHTML =
+      '<div class="card"><b>' + d.courses.length + '</b>Courses</div>' +
+      '<div class="card"><b>' + d.students.length + '</b>Students</div>' +
+      '<div class="card"><b>' + d.enrollments.length + '</b>Enrolments</div>' +
+      '<div class="card"><b>' + d.quizzes.length + '</b>Quizzes</div>';
+    $("dashboard-courses").innerHTML = d.courses.map(function (c) {
+      var n = d.enrollments.filter(function (e) { return e.courseId === c.id; }).length;
+      return '<div class="card">' + esc(c.title) + ' — ' + esc(c.teacher) +
+        '<br>' + n + ' of ' + c.capacity + ' seats taken</div>';
+    }).join("") || "<p>No courses yet. Add one, or load the demo data.</p>";
+  }
+
+  // ---- courses ---------------------------------------------------------------
+  function renderCourses() {
+    var q = $("course-search").value;
+    var list = store.searchCourses(q);
+    $("course-list").innerHTML = list.map(function (c) {
+      return '<li><b>' + esc(c.title) + '</b> — ' + esc(c.teacher) +
+        ' (' + c.capacity + ' seats, started ' + esc(c.createdAt) + ')' +
+        (c.description ? '<br>' + esc(c.description) : '') +
+        ' <button class="small" data-del-course="' + c.id + '">Delete</button></li>';
+    }).join("") || "<li>No courses found.</li>";
+    document.querySelectorAll("[data-del-course]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (confirm("Delete this course and its lessons, quizzes and enrolments?")) {
+          store.deleteCourse(btn.dataset.delCourse);
+          say("Course deleted.", true);
+        }
+      });
+    });
+  }
+
+  // ---- lessons ----------------------------------------------------------------
+  function fillCourseSelects() {
+    var opts = store.data.courses.map(function (c) {
+      return '<option value="' + c.id + '">' + esc(c.title) + '</option>';
+    }).join("");
+    ["lesson-course"].forEach(function (id) {
+      $(id).innerHTML = opts || "<option value=''>No courses yet</option>";
+    });
+  }
+  function renderLessons() {
+    var courseId = $("lesson-course").value;
+    var lessons = store.data.lessons.filter(function (l) { return l.courseId === courseId; });
+    $("lesson-list").innerHTML = lessons.map(function (l) {
+      return '<li><b>' + esc(l.title) + '</b>' + (l.content ? ' — ' + esc(l.content) : '') + '</li>';
+    }).join("") || "<li>No lessons for this course yet.</li>";
+  }
+
+  // ---- students -----------------------------------------------------------------
+  function renderStudents() {
+    $("student-list").innerHTML = store.data.students.map(function (s) {
+      return '<li><b>' + esc(s.name) + '</b> — ' + esc(s.email) + '</li>';
+    }).join("") || "<li>No students yet.</li>";
+  }
+
+  // ---- all together ----------------------------------------------------------------------
+  function renderAll() {
+    renderDashboard();
+    renderCourses();
+    fillCourseSelects();
+    renderLessons();
+    renderStudents();
+  }
+  store.subscribe(renderAll);
+
+  // ---- forms --------------------------------------------------------------------------------
+  $("form-course").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    try {
+      store.addCourse({
+        title: $("course-title").value.trim(),
+        teacher: $("course-teacher").value.trim(),
+        description: $("course-desc").value.trim(),
+        capacity: Number($("course-capacity").value) || 30,
+      });
+      ev.target.reset();
+      $("course-capacity").value = 30;
+      say("Course added.", true);
+    } catch (err) { say(err.message, false); }
+  });
+  $("course-search").addEventListener("input", renderCourses);
+  $("lesson-course").addEventListener("change", renderLessons);
+  $("form-lesson").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    try {
+      store.addLesson({
+        courseId: $("lesson-course").value,
+        title: $("lesson-title").value.trim(),
+        content: $("lesson-content").value.trim(),
+        order: store.data.lessons.filter(function (l) { return l.courseId === $("lesson-course").value; }).length + 1,
+      });
+      ev.target.reset();
+      say("Lesson added.", true);
+    } catch (err) { say(err.message, false); }
+  });
+  $("form-student").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    try {
+      store.addStudent({ name: $("student-name").value.trim(), email: $("student-email").value.trim() });
+      ev.target.reset();
+      say("Student added.", true);
+    } catch (err) { say(err.message, false); }
+  });
+  // ---- data buttons --------------------------------------------------------------------------
+  $("btn-demo").addEventListener("click", function () {
+    var before = store.data.courses.length;
+    store.seedDemo();
+    say(store.data.courses.length > before ? "Demo data loaded." : "Demo data is already there.", true);
+  });
+  $("btn-export").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(store.data, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "campuslearn-data.json";
+    a.click();
+    say("Your data file is downloading.", true);
+  });
+  $("file-import").addEventListener("change", function (ev) {
+    var file = ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.courses)) throw new Error("That file does not look like CampusLearn data.");
+        store.data = data;
+        store.save();
+        renderAll();
+        say("Your data is back.", true);
+      } catch (err) { say(err.message, false); }
+    };
+    reader.readAsText(file);
+  });
+  $("btn-reset").addEventListener("click", function () {
+    if (confirm("Delete ALL your CampusLearn data in this browser?")) {
+      try { localStorage.removeItem("campuslearn-data-v1"); } catch (e) {}
+      location.reload();
+    }
+  });
+
+  // ---- start -------------------------------------------------------------------------------------
+  store.seedDemo();
+  renderAll();
+})();

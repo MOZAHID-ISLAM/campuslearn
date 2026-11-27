@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; color: #1c2733; background: #f4f7fa; line-height: 1.5; }
+header { background: #14532d; color: #fff; padding: 20px 16px 0; }
+header h1 { margin: 0; font-size: 28px; }
+header p { margin: 4px 0 16px; color: #d9eadf; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; }
+nav button { background: transparent; color: #d9eadf; border: none; border-bottom: 3px solid transparent; padding: 10px 14px; font-size: 15px; cursor: pointer; }
+nav button.active { color: #fff; border-bottom-color: #fbbf24; font-weight: 700; }
+main { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+h2 { margin-top: 4px; }
+h3 { margin-top: 24px; }
+#msg { min-height: 1.4em; font-weight: 600; }
+#msg.ok { color: #14532d; }
+#msg.err { color: #b91c1c; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.card { background: #fff; border: 1px solid #dbe4ec; border-radius: 10px; padding: 14px; }
+.card b { display: block; font-size: 28px; color: #14532d; }
+.list { list-style: none; padding: 0; }
+.list li { background: #fff; border: 1px solid #dbe4ec; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+form { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+input, select, button { font-size: 15px; padding: 9px 10px; border-radius: 8px; border: 1px solid #b9c6d2; }
+button { background: #14532d; color: #fff; border: none; cursor: pointer; }
+button.danger { background: #b91c1c; }
+button.small { padding: 5px 9px; font-size: 13px; }
+.file-btn { display: inline-block; background: #334155; color: #fff; padding: 9px 12px; border-radius: 8px; cursor: pointer; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+fieldset { border: 1px solid #b9c6d2; border-radius: 8px; padding: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.bar { background: #dbe4ec; border-radius: 6px; height: 14px; overflow: hidden; max-width: 420px; }
+.bar > div { background: #14532d; height: 100%; }
+footer { text-align: center; color: #64748b; font-size: 13px; padding: 16px; }
+.quiz-box { background: #fff; border: 1px solid #dbe4ec; border-radius: 8px; padding: 12px; margin: 12px 0; }
+label { display: inline-flex; flex-direction: column; gap: 2px; font-size: 14px; }
