@@ -52,3 +52,20 @@ test("the dashboard shows the demo courses", async ({ page }) => {
   await expect(page.locator("#counts")).toContainText("3");
   await expect(page.locator("#dashboard-courses")).toContainText("Introduction to Programming");
 });
+
+test("a teacher can delete a course they added", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Courses" }).click();
+  await page.fill("#course-title", "Temporary Course");
+  await page.fill("#course-teacher", "Dr. Hossain");
+  await page.getByRole("button", { name: "Add course" }).click();
+  await expect(page.locator("#course-list")).toContainText("Temporary Course");
+  // Deleting asks for confirmation; accept it like a person would.
+  page.on("dialog", (dialog) => dialog.accept());
+  await page
+    .locator("#course-list li", { hasText: "Temporary Course" })
+    .getByRole("button", { name: "Delete" })
+    .click();
+  await expect(page.locator("#course-list")).not.toContainText("Temporary Course");
+  await expect(page.locator("#msg")).toContainText("Course deleted.");
+});

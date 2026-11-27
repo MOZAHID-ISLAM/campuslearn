@@ -250,7 +250,7 @@
     if (window.CampusLearnAuth && window.CampusLearnAuth.hasBackend) {
       var adapter = new window.CampusLearnSupabase.SupabaseAdapter(
         window.CampusLearnAuth.getClient(),
-        { onError: function (m) { say(m, false); } }
+        { onError: function (m) { say(m, false); }, role: user.role }
       );
       // Load the data, but do not wait forever: if the database cannot be
       // reached, show demo data instead of a blank page.

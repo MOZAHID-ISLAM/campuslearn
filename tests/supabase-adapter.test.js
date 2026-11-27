@@ -109,3 +109,61 @@ test("a database error is kept in lastError and passed to onError, never hidden"
   assert.equal(errors.length, 1);
   assert.match(errors[0], /row-level security/);
 });
+
+// Regression: a student save used to fail on the courses upsert, because
+// the database only lets faculty write courses — so the whole save
+// stopped and the student's enrolment never reached the database.
+// A refused table is skipped for a student (the store already stops a
+// student changing those tables), and the rest still saves.
+test("a student save skips a table the database refuses and still saves the rest", async () => {
+  const client = new MockClient(JSON.parse(JSON.stringify(DB_SEED)));
+  const errors = [];
+  const adapter = new SupabaseAdapter(client, {
+    role: "student",
+    onError: function (m) { errors.push(m); },
+  });
+  const realFrom = client.from.bind(client);
+  client.from = function (table) {
+    const q = realFrom(table);
+    if (table === "courses") {
+      q.upsert = function () {
+        return Promise.resolve({ data: null, error: { code: "42501", message: "new row violates row-level security policy for table \"courses\"" } });
+      };
+    }
+    return q;
+  };
+  const data = {
+    courses: [{ id: "c1", title: "Maths", teacher: "Mr. Karim", description: "", capacity: 30, createdAt: "2026-11-27" }],
+    lessons: [], students: [],
+    enrollments: [{ id: "e2", studentId: "s1", courseId: "c1", enrolledAt: "2026-11-27", completedLessonIds: [] }],
+    quizzes: [], attempts: [],
+  };
+  adapter.save(data);
+  await adapter.lastSave;
+  assert.equal(adapter.lastError, null);
+  assert.deepEqual(errors, []);
+  assert.equal(client.tables.enrollments.find(function (e) { return e.id === "e2"; }).course_id, "c1");
+});
+
+test("a faculty save still treats a refused write as a real failure", async () => {
+  const client = new MockClient(JSON.parse(JSON.stringify(DB_SEED)));
+  const errors = [];
+  const adapter = new SupabaseAdapter(client, {
+    role: "faculty",
+    onError: function (m) { errors.push(m); },
+  });
+  const realFrom = client.from.bind(client);
+  client.from = function (table) {
+    const q = realFrom(table);
+    if (table === "courses") {
+      q.upsert = function () {
+        return Promise.resolve({ data: null, error: { code: "42501", message: "new row violates row-level security policy for table \"courses\"" } });
+      };
+    }
+    return q;
+  };
+  adapter.save({ courses: [{ id: "c9", title: "Nope", teacher: "X", description: "", capacity: 1, createdAt: "2026-11-27" }], lessons: [], students: [], enrollments: [], quizzes: [], attempts: [] });
+  await adapter.lastSave.catch(function () {});
+  assert.match(adapter.lastError, /row-level security/);
+  assert.equal(errors.length, 1);
+});

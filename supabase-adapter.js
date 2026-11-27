@@ -85,6 +85,10 @@
     if (!client) throw new Error("SupabaseAdapter needs a Supabase client.");
     this.client = client;
     this.onError = (options && options.onError) || null;
+    // The signed-in user's role ("student" or "faculty"). The adapter
+    // needs it to tell a real save failure from a table this user is
+    // simply not allowed to write (see save()).
+    this.role = (options && options.role) || null;
     this.cache = null;
     this.lastError = null;
     this.lastSave = null;
@@ -122,8 +126,18 @@
   // Runs in the background; the store does not wait for it.
   // Write the whole store back: delete rows that are gone, save the rest.
   // Runs in the background, one save at a time; the store does not wait.
+  // One exception: a student is not allowed to write the courses,
+  // lessons, students or quizzes tables, so the database refuses those
+  // upserts (error 42501). That is not a failure — the store already
+  // stops a student changing those tables, so a student save can only
+  // ever change enrolments and attempts. The adapter skips a refused
+  // table and keeps saving the rest. For anyone else (faculty), a
+  // refused write IS a failure and is reported.
   SupabaseAdapter.prototype.save = function (data) {
     var self = this;
+    var refusedByRules = function (err) {
+      return self.role === "student" && err && err.code === "42501";
+    };
     var run = async function () {
       for (var i = 0; i < TABLES.length; i++) {
         var t = TABLES[i];
@@ -139,6 +153,7 @@
         if (gone.length > 0) {
           var del = await self.client.from(t.name).delete().in("id", gone);
           if (del.error) {
+            if (refusedByRules(del.error)) continue;
             self._fail(del.error);
             throw new Error(del.error.message);
           }
@@ -146,6 +161,7 @@
         if (rows.length > 0) {
           var up = await self.client.from(t.name).upsert(rows);
           if (up.error) {
+            if (refusedByRules(up.error)) continue;
             self._fail(up.error);
             throw new Error(up.error.message);
           }
