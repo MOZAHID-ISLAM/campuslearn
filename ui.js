@@ -252,12 +252,22 @@
         window.CampusLearnAuth.getClient(),
         { onError: function (m) { say(m, false); } }
       );
+      // Load the data, but do not wait forever: if the database cannot be
+      // reached, show demo data instead of a blank page.
+      var loaded = false;
       try {
-        await adapter.fetchAll();
+        await Promise.race([
+          adapter.fetchAll(),
+          new Promise(function (_, reject) {
+            setTimeout(function () { reject(new Error("timed out after 8 seconds")); }, 8000);
+          }),
+        ]);
+        loaded = true;
       } catch (err) {
-        say("Could not load data from the database: " + err.message, false);
+        say("Could not load data from the database (" + err.message + ") — showing demo data instead.", false);
       }
-      store = new CL.Store(adapter);
+      store = loaded ? new CL.Store(adapter) : new CL.Store(new CL.MemoryAdapter());
+      if (!loaded) store.seedDemo();
     } else {
       store = CL.getStore();
     }

@@ -1,7 +1,20 @@
 // End-to-end tests with Playwright (the new tool for Lab 6).
 // These tests open the real app in a real browser and click what a
 // student would click. They run against http://localhost:8000.
+// They run in DEMO mode: the live config.js is replaced with an empty
+// one, so the app does not need a signed-in account or the live database.
+// The database itself is checked by the unit tests (with a mocked
+// Supabase client) and by a live check in a real browser.
 const { test, expect } = require("@playwright/test");
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/config.js", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: "window.CAMPUSLEARN_CONFIG = { SUPABASE_URL: \"\", SUPABASE_ANON_KEY: \"\" };",
+    })
+  );
+});
 
 test("a teacher can add a course and see it in the list", async ({ page }) => {
   await page.goto("/");
