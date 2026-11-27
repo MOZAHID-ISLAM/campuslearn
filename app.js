@@ -323,6 +323,23 @@
     };
   };
 
+  Store.prototype.exportEnrollmentsCsv = function () {
+    const lines = ["Student,Course,Lessons finished,Average score"];
+    const self = this;
+    this.data.enrollments.forEach(function (e) {
+      const student = self.data.students.find(function (s) { return s.id === e.studentId; });
+      const course = self.data.courses.find(function (c) { return c.id === e.courseId; });
+      const p = self.progress(e.studentId, e.courseId);
+      lines.push([
+        student ? student.name : "",
+        course ? course.title : "",
+        p.lessonsDone + " of " + p.lessonsTotal,
+        p.averageScore + "%",
+      ].join(","));
+    });
+    return lines.join("\n");
+  };
+
   // Demo data, so the app is not empty the first time it is opened.
   Store.prototype.seedDemo = function () {
     if (this.data.courses.length > 0) return;

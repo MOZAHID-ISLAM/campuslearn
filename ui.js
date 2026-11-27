@@ -288,6 +288,14 @@
     store.seedDemo();
     say(store.data.courses.length > before ? "Demo data loaded." : "Demo data is already there.", true);
   });
+  $("btn-export-csv").addEventListener("click", function () {
+    var blob = new Blob([store.exportEnrollmentsCsv()], { type: "text/csv" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "campuslearn-enrolments.csv";
+    a.click();
+    say("Your enrolments file is downloading.", true);
+  });
   $("btn-export").addEventListener("click", function () {
     var blob = new Blob([JSON.stringify(store.data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
