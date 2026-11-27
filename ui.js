@@ -76,7 +76,7 @@
     var opts = store.data.courses.map(function (c) {
       return '<option value="' + c.id + '">' + esc(c.title) + '</option>';
     }).join("");
-    ["lesson-course", "enroll-course", "progress-course"].forEach(function (id) {
+    ["lesson-course", "enroll-course", "quiz-course", "progress-course"].forEach(function (id) {
       $(id).innerHTML = opts || "<option value=''>No courses yet</option>";
     });
   }
@@ -122,6 +122,52 @@
     });
   }
 
+  // ---- quizzes -------------------------------------------------------------------
+  function renderQuizzes() {
+    $("quiz-list").innerHTML = store.data.quizzes.map(function (q) {
+      return '<div class="card"><b>' + esc(q.title) + '</b> — ' + esc(courseName(q.courseId)) +
+        '<br>Marking: ' + esc(q.grading) + ', pass mark: ' + q.passMark + '%, ' +
+        q.questions.length + ' question(s)' +
+        ' <button class="small" data-take-quiz="' + q.id + '">Take quiz</button></div>';
+    }).join("") || "<p>No quizzes yet.</p>";
+    document.querySelectorAll("[data-take-quiz]").forEach(function (btn) {
+      btn.addEventListener("click", function () { showQuiz(btn.dataset.takeQuiz); });
+    });
+  }
+  function showQuiz(quizId) {
+    var quiz = store.data.quizzes.find(function (q) { return q.id === quizId; });
+    if (!quiz) return;
+    var enrolled = store.data.enrollments.filter(function (e) { return e.courseId === quiz.courseId; });
+    var opts = enrolled.map(function (e) {
+      return '<option value="' + e.studentId + '">' + esc(studentName(e.studentId)) + '</option>';
+    }).join("");
+    var qs = quiz.questions.map(function (q, i) {
+      var radios = q.choices.map(function (choice, j) {
+        return '<label><input type="radio" name="q' + i + '" value="' + j + '"> ' + esc(choice) + '</label><br>';
+      }).join("");
+      return '<p><b>Q' + (i + 1) + '.</b> ' + esc(q.text) + '<br>' + radios + '</p>';
+    }).join("");
+    $("quiz-take").innerHTML =
+      '<h3>' + esc(quiz.title) + '</h3>' +
+      '<label>Student <select id="quiz-student">' + (opts || "<option value=''>Nobody is enrolled yet</option>") + '</select></label>' +
+      qs +
+      '<button id="btn-submit-quiz" data-quiz="' + quiz.id + '">Submit answers</button>';
+    $("quiz-result").textContent = "";
+    $("btn-submit-quiz").addEventListener("click", function () {
+      var studentId = $("quiz-student").value;
+      var answers = quiz.questions.map(function (q, i) {
+        var picked = document.querySelector('input[name="q' + i + '"]:checked');
+        return picked ? Number(picked.value) : -1;
+      });
+      try {
+        var a = store.submitQuiz(quiz.id, studentId, answers);
+        var text = "You scored " + a.score + " out of " + a.total + " (" + a.result + "%)";
+        if (quiz.grading === "passfail") text += a.passed ? " — Passed" : " — Failed";
+        $("quiz-result").textContent = text;
+      } catch (err) { say(err.message, false); }
+    });
+  }
+
   // ---- progress -----------------------------------------------------------------------
   function renderProgress() {
     var studentId = $("progress-student").value;
@@ -145,6 +191,7 @@
     renderLessons();
     renderStudents();
     renderEnrollments();
+    renderQuizzes();
     renderProgress();
   }
   store.subscribe(renderAll);
@@ -192,6 +239,44 @@
     try {
       store.enroll($("enroll-student").value, $("enroll-course").value);
       say("Student enrolled.", true);
+    } catch (err) { say(err.message, false); }
+  });
+  var quizQuestions = [];
+  function renderQuizQuestions() {
+    $("quiz-questions").innerHTML = quizQuestions.map(function (q, i) {
+      return '<p>Q' + (i + 1) + '. ' + esc(q.text) + ' — right answer: choice ' + (q.answer + 1) + '</p>';
+    }).join("");
+  }
+  $("btn-add-question").addEventListener("click", function () {
+    var text = $("question-text").value.trim();
+    var c0 = $("question-c0").value.trim();
+    var c1 = $("question-c1").value.trim();
+    var c2 = $("question-c2").value.trim();
+    var answer = Number($("question-answer").value);
+    if (!text || !c0 || !c1 || !c2) { say("Write the question and all three choices first.", false); return; }
+    quizQuestions.push({ text: text, choices: [c0, c1, c2], answer: answer });
+    $("question-text").value = "";
+    $("question-c0").value = "";
+    $("question-c1").value = "";
+    $("question-c2").value = "";
+    renderQuizQuestions();
+  });
+  $("form-quiz").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    try {
+      if (quizQuestions.length === 0) throw new Error("Add at least one question first.");
+      store.addQuiz({
+        courseId: $("quiz-course").value,
+        title: $("quiz-title").value.trim(),
+        grading: $("quiz-grading").value,
+        passMark: Number($("quiz-passmark").value) || 50,
+        questions: quizQuestions,
+      });
+      quizQuestions = [];
+      renderQuizQuestions();
+      ev.target.reset();
+      $("quiz-passmark").value = 50;
+      say("Quiz added.", true);
     } catch (err) { say(err.message, false); }
   });
   $("progress-student").addEventListener("change", renderProgress);

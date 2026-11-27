@@ -1,0 +1,16 @@
+DRAFT — Reflection essay for the CSE 3206 Lab 6 report (500–700 words).
+Mozahid: read this, change it into your own words, and keep only what is true for you.
+
+I chose an online learning platform because it is the kind of software a campus really uses, and because it let me show every part the lab asks for in one place: courses, lessons, students, enrolments, quizzes and progress. I could have picked a clinic or a shop, but a learning platform is the most common academic software, and I understand its rules from my own life as a student. I know what a course, a lesson and a quiz should do, so I spent my time on the building, not on learning a new subject.
+
+I worked in small steps, one working part at a time. First the courses and lessons, then students, then enrolments and progress, then quizzes, and last the browser tests. Each step worked on its own before I started the next one. I picked this way of working because I am one person with a fixed date, and I wanted something I could show after every step instead of a big pile of half-done code at the end. The other way I thought about was to plan everything up front and build it all at once, but that would have left me with nothing to show if I ran out of time.
+
+The hardest part at the start was writing the tests before the code. It felt slow and backwards: I had to think about what a course should do before I had written any of it. But after the first two tests it got easier, and the tests caught two real mistakes — a quiz that let a student take it without enrolling, and a lesson that could be counted twice. Finding those mistakes in the tests was much better than finding them in the demo.
+
+I also had trouble with the page showing old numbers after the data changed. At first I called every update by hand after each change, and I kept missing one. The Observer pattern fixed it: the page now listens to the store, and one change updates everything at once. The merge conflict was a smaller problem — two branches changed the same lines in the README — and fixing it taught me to keep my changes small and to merge often.
+
+For the new tool I picked Playwright, for browser tests. I had already used Selenium in the sessional, and I compared the two. Selenium needs a separate driver and extra setup, and it waits less cleverly. Playwright needs no driver, waits for the page by itself, and was running in minutes. I learned it from the official docs first, which were exact and had good examples, though they were long. A short video helped me start, but it skipped the reasons behind the steps, so the docs were the resource I trusted most. For plain JavaScript questions I used MDN, which is short and clear.
+
+The one thing I would change is the storage. Right now the data lives in the browser, so it is only on one computer. That is fine for this lab, but a real campus needs shared data.
+
+The next skill I want to learn is a back-end: Node with a real database, so the data lives on a server and every student sees the same courses and results. After that I want to learn API testing, so I can test the server the same way I tested the browser here. Both follow straight from what this project taught me: small steps, tests first, and one clear way to do each job.
