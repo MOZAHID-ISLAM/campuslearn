@@ -1,4 +1,7 @@
 * { box-sizing: border-box; }
+/* The hidden attribute must really hide: our own form rule sets
+   display:flex, which would otherwise beat it and show a hidden form. */
+[hidden] { display: none !important; }
 body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; color: #1c2733; background: #f4f7fa; line-height: 1.5; }
 header { background: #14532d; color: #fff; padding: 20px 16px 0; }
 header h1 { margin: 0; font-size: 28px; }

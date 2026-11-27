@@ -66,3 +66,33 @@ test("search finds courses by title or teacher, ignoring case", () => {
   assert.equal(store.searchCourses("KARIM").length, 1);
   assert.equal(store.searchCourses("").length, 2);
 });
+
+// Regression: a fresh page load used to restart the id counter at 1, so
+// the next new course got an id that already existed (c1). In demo mode
+// that only made a duplicate in a list; with the database it made the
+// upsert fail with "ON CONFLICT DO UPDATE command cannot affect row a
+// second time" and a delete could remove the wrong course.
+test("new ids do not reuse ids already in loaded data", () => {
+  __resetIds();
+  const adapter = new MemoryAdapter();
+  const first = new Store(adapter);
+  first.addCourse({ title: "A", teacher: "T" }); // c1
+  first.addCourse({ title: "B", teacher: "T" }); // c2
+  // A fresh page load restarts the counter; the store must still not reuse c1/c2.
+  __resetIds();
+  const reloaded = new Store(adapter);
+  const added = reloaded.addCourse({ title: "C", teacher: "T" });
+  assert.equal(added.id, "c3");
+  assert.equal(new Set(reloaded.data.courses.map((c) => c.id)).size, 3);
+});
+
+test("load() also moves the id counter past loaded ids", () => {
+  __resetIds();
+  const adapter = new MemoryAdapter();
+  const store = new Store(adapter);
+  store.addCourse({ title: "A", teacher: "T" }); // c1
+  __resetIds();
+  store.load();
+  const added = store.addCourse({ title: "B", teacher: "T" });
+  assert.equal(added.id, "c2");
+});

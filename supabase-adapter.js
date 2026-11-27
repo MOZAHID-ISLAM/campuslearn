@@ -88,6 +88,9 @@
     this.cache = null;
     this.lastError = null;
     this.lastSave = null;
+    // Saves run one after another, never at the same time: two saves in
+    // flight could read and write the same rows in the wrong order.
+    this._saveChain = Promise.resolve();
   }
 
   SupabaseAdapter.prototype._fail = function (err) {
@@ -117,9 +120,11 @@
 
   // Write the whole store back: delete rows that are gone, save the rest.
   // Runs in the background; the store does not wait for it.
+  // Write the whole store back: delete rows that are gone, save the rest.
+  // Runs in the background, one save at a time; the store does not wait.
   SupabaseAdapter.prototype.save = function (data) {
     var self = this;
-    this.lastSave = (async function () {
+    var run = async function () {
       for (var i = 0; i < TABLES.length; i++) {
         var t = TABLES[i];
         var rows = (data[KEYS[t.name]] || []).map(t.toDb);
@@ -147,7 +152,8 @@
         }
       }
       self.cache = JSON.parse(JSON.stringify(data));
-    })();
+    };
+    this.lastSave = this._saveChain = this._saveChain.then(run, run);
     this.lastSave.catch(function (err) {
       // The loop above already reported its own failure; only report a
       // new one here (for example a network error with no database reply).

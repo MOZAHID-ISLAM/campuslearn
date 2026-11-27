@@ -36,6 +36,20 @@
   function __resetIds() {
     nextId = 1;
   }
+  // After loading saved data, move the id counter past the highest id
+  // already in use. Without this, a fresh page load resets the counter
+  // to 1 and the next new course gets an id that already exists (c1),
+  // which the database refuses as a duplicate in one upsert.
+  function syncNextId(data) {
+    var max = 0;
+    ["courses", "lessons", "students", "enrollments", "quizzes", "attempts"].forEach(function (key) {
+      (data[key] || []).forEach(function (item) {
+        var m = /^[a-z]([0-9]+)$/.exec(item.id || "");
+        if (m) max = Math.max(max, Number(m[1]));
+      });
+    });
+    if (max + 1 > nextId) nextId = max + 1;
+  }
   function today() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -176,7 +190,10 @@
     // Who is using the store right now. Demo mode (no backend) allows all.
     this.currentUser = { role: "demo", studentId: null, email: null };
     const loaded = this.adapter.load();
-    if (loaded) this.data = loaded;
+    if (loaded) {
+      this.data = loaded;
+      syncNextId(this.data);
+    }
   }
 
   // The page calls this after sign-in. The store refuses work the role
@@ -218,6 +235,7 @@
     const loaded = this.adapter.load();
     if (loaded) {
       this.data = loaded;
+      syncNextId(this.data);
       this.notify();
     }
   };

@@ -59,8 +59,12 @@
     var user = res.data && res.data.user;
     if (!user) throw new Error("Sign-up did not return a user. Check your email to confirm the account.");
     // New accounts are students. The roster row lets the student enrol.
-    await sb.from("students").insert({ id: "s-" + user.id.slice(0, 8), name: name || email, email: email });
-    await sb.from("profiles").insert({ id: user.id, email: email, display_name: name || email, role: "student" });
+    // Both inserts must succeed: if one fails, say so instead of
+    // signing the user in with a half-made account.
+    var roster = await sb.from("students").insert({ id: "s-" + user.id.slice(0, 8), name: name || email, email: email });
+    if (roster.error) throw new Error("Could not add you to the student list: " + roster.error.message);
+    var prof = await sb.from("profiles").insert({ id: user.id, email: email, display_name: name || email, role: "student" });
+    if (prof.error) throw new Error("Could not set up your account: " + prof.error.message);
     return currentUser();
   }
 
