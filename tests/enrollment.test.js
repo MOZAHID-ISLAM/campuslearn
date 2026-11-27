@@ -61,3 +61,16 @@ test("deleting a course also removes its lessons, quizzes and enrolments", () =>
   assert.equal(store.data.quizzes.length, 0);
   assert.equal(store.data.enrollments.length, 0);
 });
+
+test("progress shows 0 for a student who has not enrolled", () => {
+  __resetIds();
+  const store = new Store(new MemoryAdapter());
+  const course = store.addCourse({ title: "Maths", teacher: "Mr. Karim" });
+  const student = store.addStudent({ name: "Asha", email: "asha@example.com" });
+  store.addLesson({ courseId: course.id, title: "L1", order: 1 });
+  const p = store.progress(student.id, course.id);
+  assert.equal(p.lessonsDone, 0);
+  assert.equal(p.lessonsTotal, 1);
+  assert.equal(p.quizzesTaken, 0);
+  assert.equal(p.averageScore, 0);
+});
