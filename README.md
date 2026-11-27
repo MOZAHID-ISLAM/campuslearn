@@ -6,7 +6,7 @@ This is my Lab 6 project for **CSE 3206 – Software Engineering Sessional (22 S
 
 ## Live demo
 
-<!-- Link added after the repository is made public on GitHub Pages -->
+[Open the live demo](https://mozahid-islam.github.io/campuslearn/)
 
 ## What it does
 
