@@ -88,11 +88,21 @@
         (isFaculty() ? ' <button class="small" data-del-course="' + c.id + '">Delete</button>' : '') + '</li>';
     }).join("") || "<li>No courses found.</li>";
     document.querySelectorAll("[data-del-course]").forEach(function (btn) {
+      // Deleting takes two clicks on the same button: the first click
+      // arms it ("Click again to delete"), the second deletes. A native
+      // confirm() box was used before, but automated browsers dismiss
+      // it by themselves, so the delete could never be clicked through.
+      var armed = false;
       btn.addEventListener("click", function () {
-        if (confirm("Delete this course and its lessons, quizzes and enrolments?")) {
+        if (!armed) {
+          armed = true;
+          btn.textContent = "Click again to delete";
+          return;
+        }
+        try {
           store.deleteCourse(btn.dataset.delCourse);
           say("Course deleted.", true);
-        }
+        } catch (err) { say(err.message, false); }
       });
     });
   }
