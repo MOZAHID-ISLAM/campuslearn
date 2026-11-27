@@ -24,6 +24,25 @@ CampusLearn has seven parts (modules):
 
 Your data is saved in your own browser (localStorage), so it is still there when you come back. You can also download your data as a JSON file and bring it back later.
 
+## Who can do what (roles)
+
+There are two roles: **faculty** and **student**.
+
+- Faculty can add and delete courses, lessons, students and quizzes, enrol any student, and see everyone's progress.
+- Students can enrol themselves, finish their own lessons, take their own quizzes, and see their own progress only.
+
+The page hides the faculty buttons from students, but hiding a button is not the real check: the store itself refuses work the role may not do, and the database refuses it too.
+
+## Back end (Supabase)
+
+The app can use a real database instead of browser storage. The back end is Supabase (Postgres + Auth):
+
+- The data lives in 7 tables: profiles, courses, lessons, students, enrollments, quizzes, attempts.
+- Row-level security enforces the roles in the database itself. A student who tries to add a course gets refused by the database, even from the browser tools.
+- Sign-in is by email and password. New accounts are students; a faculty account is made by changing one row in the profiles table.
+
+Without a back end set up, the app runs in **demo mode**: no sign-in, data in the browser only. See `SUPABASE_SETUP.md` for the six owner steps to connect it.
+
 ## How to run it
 
 You need nothing except a browser:
@@ -60,8 +79,12 @@ npm run test:e2e
 
 - `index.html` – the page.
 - `styles.css` – how the page looks.
-- `app.js` – all the rules of the app (courses, enrolments, quiz marking, saving). It works in the browser and in Node, so the same code is tested and shown.
+- `app.js` – all the rules of the app (courses, enrolments, quiz marking, saving, and who may do what). It works in the browser and in Node, so the same code is tested and shown.
 - `ui.js` – the page logic: it shows things, reads the forms, and tells the store what the user asked for.
+- `config.js` – back-end settings (Supabase URL and anon key; empty means demo mode).
+- `auth.js` – sign-in, sign-up, sign-out, and reading the signed-in user's role.
+- `supabase-adapter.js` – the storage adapter that talks to the Supabase database.
+- `supabase/migrations/0001_schema.sql` – the database tables, role rules, and demo data.
 - `tests/` – unit tests (Node's own test runner) and end-to-end tests (Playwright).
 
 Design patterns used (explained in full in the report):
@@ -69,7 +92,7 @@ Design patterns used (explained in full in the report):
 - **Singleton** – one shared store for all the data.
 - **Factory** – one place that builds a new course, lesson, student or quiz with an id and safe starting values.
 - **Observer** – parts of the page listen to the store and refresh when the data changes.
-- **Adapter** – the store only talks to a storage adapter, so browser storage can be swapped for something else later without rewriting the app.
+- **Adapter** – the store only talks to a storage adapter, so browser storage can be swapped for the Supabase database without rewriting the app. The Supabase adapter is the proof: same save/load, different place.
 - **Strategy** – a quiz is marked by one of two scoring ways (percent or pass/fail).
 
 ## How I worked (Git)

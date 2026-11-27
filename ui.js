@@ -4,7 +4,33 @@
 (function () {
   "use strict";
   var CL = window.CampusLearn;
-  var store = CL.getStore();
+  // The store is created in boot(), once we know the backend mode and the
+  // signed-in user. Demo mode (no backend) uses the browser storage.
+  var store = null;
+  var currentUser = { role: "demo", studentId: null, email: null };
+  function isFaculty() { return currentUser.role === "faculty" || currentUser.role === "demo"; }
+
+  // Hide the faculty-only parts of the page for a signed-in student.
+  function applyRoleToPage() {
+    var student = currentUser.role === "student";
+    document.querySelectorAll("[data-faculty-only]").forEach(function (el) {
+      el.hidden = student;
+    });
+    var studentsTab = document.querySelector('[data-tab="students"]');
+    if (studentsTab) studentsTab.hidden = student;
+    var resetBtn = $("btn-reset");
+    if (resetBtn) resetBtn.hidden = !!window.CampusLearnAuth && window.CampusLearnAuth.hasBackend;
+    var demoNote = $("demo-note");
+    if (demoNote) demoNote.hidden = !!window.CampusLearnAuth && window.CampusLearnAuth.hasBackend;
+    var backendNote = $("backend-note");
+    if (backendNote) backendNote.hidden = !(window.CampusLearnAuth && window.CampusLearnAuth.hasBackend);
+    var userLine = $("user-line");
+    if (userLine) {
+      userLine.textContent = currentUser.role === "demo"
+        ? "Demo mode — no sign-in, data stays in this browser."
+        : "Signed in as " + currentUser.email + " (" + currentUser.role + ").";
+    }
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(text) {
@@ -59,7 +85,7 @@
       return '<li><b>' + esc(c.title) + '</b> — ' + esc(c.teacher) +
         ' (' + c.capacity + ' seats, started ' + esc(c.createdAt) + ')' +
         (c.description ? '<br>' + esc(c.description) : '') +
-        ' <button class="small" data-del-course="' + c.id + '">Delete</button></li>';
+        (isFaculty() ? ' <button class="small" data-del-course="' + c.id + '">Delete</button>' : '') + '</li>';
     }).join("") || "<li>No courses found.</li>";
     document.querySelectorAll("[data-del-course]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -81,7 +107,11 @@
     });
   }
   function fillStudentSelects() {
-    var opts = store.data.students.map(function (s) {
+    // A student only ever sees themselves in the student lists.
+    var students = currentUser.role === "student" && currentUser.studentId
+      ? store.data.students.filter(function (s) { return s.id === currentUser.studentId; })
+      : store.data.students;
+    var opts = students.map(function (s) {
       return '<option value="' + s.id + '">' + esc(s.name) + '</option>';
     }).join("");
     ["enroll-student", "progress-student"].forEach(function (id) {
@@ -105,7 +135,11 @@
 
   // ---- enrolments ------------------------------------------------------------------
   function renderEnrollments() {
-    $("enrollment-list").innerHTML = store.data.enrollments.map(function (e) {
+    // A student only sees their own enrolments.
+    var enrolments = currentUser.role === "student" && currentUser.studentId
+      ? store.data.enrollments.filter(function (e) { return e.studentId === currentUser.studentId; })
+      : store.data.enrollments;
+    $("enrollment-list").innerHTML = enrolments.map(function (e) {
       var lessons = store.data.lessons.filter(function (l) { return l.courseId === e.courseId; });
       var boxes = lessons.map(function (l) {
         var done = e.completedLessonIds.indexOf(l.id) !== -1;
@@ -138,9 +172,17 @@
     var quiz = store.data.quizzes.find(function (q) { return q.id === quizId; });
     if (!quiz) return;
     var enrolled = store.data.enrollments.filter(function (e) { return e.courseId === quiz.courseId; });
-    var opts = enrolled.map(function (e) {
-      return '<option value="' + e.studentId + '">' + esc(studentName(e.studentId)) + '</option>';
-    }).join("");
+    // A student takes the quiz as themselves; there is no picker for them.
+    var studentPicker;
+    if (currentUser.role === "student" && currentUser.studentId) {
+      studentPicker = '<input type="hidden" id="quiz-student" value="' + currentUser.studentId + '">' +
+        '<p>Taking this quiz as <b>' + esc(studentName(currentUser.studentId)) + '</b>.</p>';
+    } else {
+      var opts = enrolled.map(function (e) {
+        return '<option value="' + e.studentId + '">' + esc(studentName(e.studentId)) + '</option>';
+      }).join("");
+      studentPicker = '<label>Student <select id="quiz-student">' + (opts || "<option value=''>Nobody is enrolled yet</option>") + '</select></label>';
+    }
     var qs = quiz.questions.map(function (q, i) {
       var radios = q.choices.map(function (choice, j) {
         return '<label><input type="radio" name="q' + i + '" value="' + j + '"> ' + esc(choice) + '</label><br>';
@@ -149,7 +191,7 @@
     }).join("");
     $("quiz-take").innerHTML =
       '<h3>' + esc(quiz.title) + '</h3>' +
-      '<label>Student <select id="quiz-student">' + (opts || "<option value=''>Nobody is enrolled yet</option>") + '</select></label>' +
+      studentPicker +
       qs +
       '<button id="btn-submit-quiz" data-quiz="' + quiz.id + '">Submit answers</button>';
     $("quiz-result").textContent = "";
@@ -170,7 +212,10 @@
 
   // ---- progress -----------------------------------------------------------------------
   function renderProgress() {
-    var studentId = $("progress-student").value;
+    // A student only sees their own progress.
+    var studentId = currentUser.role === "student" && currentUser.studentId
+      ? currentUser.studentId
+      : $("progress-student").value;
     var courseId = $("progress-course").value;
     if (!studentId || !courseId) { $("progress-view").innerHTML = "<p>Add a student and a course first.</p>"; return; }
     var p = store.progress(studentId, courseId);
@@ -184,6 +229,7 @@
 
   // ---- all together ----------------------------------------------------------------------
   function renderAll() {
+    if (!store) return;
     renderDashboard();
     renderCourses();
     fillCourseSelects();
@@ -194,7 +240,97 @@
     renderQuizzes();
     renderProgress();
   }
-  store.subscribe(renderAll);
+
+  // ---- start: sign in first when a back end is set up ---------------------
+  // Demo mode (no back end): the old behaviour, data in this browser.
+  // Back-end mode: the user signs in, the role comes from the database,
+  // the data is loaded from the database, and the page follows the role.
+  async function boot(user) {
+    currentUser = user;
+    if (window.CampusLearnAuth && window.CampusLearnAuth.hasBackend) {
+      var adapter = new window.CampusLearnSupabase.SupabaseAdapter(
+        window.CampusLearnAuth.getClient(),
+        { onError: function (m) { say(m, false); } }
+      );
+      try {
+        await adapter.fetchAll();
+      } catch (err) {
+        say("Could not load data from the database: " + err.message, false);
+      }
+      store = new CL.Store(adapter);
+    } else {
+      store = CL.getStore();
+    }
+    store.setUser(user);
+    store.subscribe(renderAll);
+    applyRoleToPage();
+    document.querySelector("main").hidden = false;
+    document.querySelector("#tabs").hidden = false;
+    if (!window.CampusLearnAuth || !window.CampusLearnAuth.hasBackend) store.seedDemo();
+    renderAll();
+  }
+
+  function showAuth() {
+    var bar = $("auth-bar");
+    if (!bar || !window.CampusLearnAuth) return;
+    if (!window.CampusLearnAuth.hasBackend) {
+      bar.innerHTML = '<p id="user-line"></p>';
+      return;
+    }
+    bar.innerHTML =
+      '<form id="form-auth">' +
+      '<input id="auth-email" type="email" placeholder="Email" required> ' +
+      '<input id="auth-password" type="password" placeholder="Password" required> ' +
+      '<button type="submit" id="btn-signin">Sign in</button> ' +
+      '<button type="button" id="btn-signup">Sign up</button>' +
+      '</form>' +
+      '<p id="user-line"></p>' +
+      '<button id="btn-signout" hidden>Sign out</button>';
+    $("form-auth").addEventListener("submit", async function (ev) {
+      ev.preventDefault();
+      try {
+        var user = await window.CampusLearnAuth.signIn($("auth-email").value.trim(), $("auth-password").value);
+        afterSignIn(user);
+      } catch (err) { say(err.message, false); }
+    });
+    $("btn-signup").addEventListener("click", async function () {
+      try {
+        var user = await window.CampusLearnAuth.signUp(
+          $("auth-email").value.trim(), $("auth-password").value,
+          $("auth-email").value.trim().split("@")[0]
+        );
+        say("Account made. You are signed in as a student.", true);
+        afterSignIn(user);
+      } catch (err) { say(err.message, false); }
+    });
+    $("btn-signout").addEventListener("click", async function () {
+      await window.CampusLearnAuth.signOut();
+      location.reload();
+    });
+  }
+  function afterSignIn(user) {
+    $("form-auth").hidden = true;
+    $("btn-signout").hidden = false;
+    boot(user);
+  }
+
+  showAuth();
+  (async function () {
+    if (window.CampusLearnAuth && window.CampusLearnAuth.hasBackend) {
+      try {
+        var user = await window.CampusLearnAuth.currentUser();
+        if (user) afterSignIn(user);
+        else {
+          // Nobody signed in yet: hide the app until sign-in, because the
+          // data belongs to signed-in users.
+          document.querySelector("main").hidden = true;
+          document.querySelector("#tabs").hidden = true;
+        }
+      } catch (err) { say(err.message, false); }
+    } else {
+      boot({ role: "demo", studentId: null, email: null });
+    }
+  })();
 
   // ---- forms --------------------------------------------------------------------------------
   $("form-course").addEventListener("submit", function (ev) {
@@ -284,6 +420,7 @@
 
   // ---- data buttons --------------------------------------------------------------------------
   $("btn-demo").addEventListener("click", function () {
+    if (!store) return;
     var before = store.data.courses.length;
     store.seedDemo();
     say(store.data.courses.length > before ? "Demo data loaded." : "Demo data is already there.", true);
@@ -319,7 +456,4 @@
     }
   });
 
-  // ---- start -------------------------------------------------------------------------------------
-  store.seedDemo();
-  renderAll();
 })();
