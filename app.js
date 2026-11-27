@@ -130,6 +130,21 @@
     return this.saved ? JSON.parse(JSON.stringify(this.saved)) : null;
   };
 
+  // ---- Strategy: two ways to score a quiz ----------------------------------
+  // Each way is its own small function. The quiz picks which one to use.
+  // percent: the result is a number from 0 to 100.
+  // pass/fail: the result is true when the percent reaches the pass mark.
+  // A third way can be added later without touching submitQuiz.
+  // Each way only needs the score, the total and (for pass/fail) the pass mark.
+  const gradeStrategies = {
+    percent: function (score, total) {
+      return total === 0 ? 0 : Math.round((score / total) * 100);
+    },
+    passfail: function (score, total, passMark) {
+      return total === 0 ? false : Math.round((score / total) * 100) >= passMark;
+    },
+  };
+
   // ---- Store: the one place that holds all the data (Singleton) ------------
   function Store(adapter) {
     this.adapter = adapter || new MemoryAdapter();
@@ -233,6 +248,37 @@
     return enrolment;
   };
 
+  Store.prototype.submitQuiz = function (quizId, studentId, answers) {
+    const quiz = this.data.quizzes.find(function (q) { return q.id === quizId; });
+    if (!quiz) throw new Error("No quiz with that id.");
+    // Only a student enrolled in the quiz's course may take it.
+    const enrolled = this.data.enrollments.some(function (e) {
+      return e.studentId === studentId && e.courseId === quiz.courseId;
+    });
+    if (!enrolled) throw new Error("This student is not enrolled in this course.");
+    let score = 0;
+    quiz.questions.forEach(function (q, i) {
+      // An answer left blank counts as wrong.
+      if (answers[i] === q.answer) score += 1;
+    });
+    const total = quiz.questions.length;
+    const result = gradeStrategies.percent(score, total);
+    const attempt = {
+      id: newId("a"),
+      quizId: quizId,
+      studentId: studentId,
+      score: score,
+      total: total,
+      result: result,
+    };
+    if (quiz.grading === "passfail") {
+      attempt.passed = gradeStrategies.passfail(score, total, quiz.passMark);
+    }
+    this.data.attempts.push(attempt);
+    this._changed();
+    return attempt;
+  };
+
   Store.prototype.deleteCourse = function (courseId) {
     const keep = function (list, test) { return list.filter(test); };
     this.data.courses = keep(this.data.courses, function (c) { return c.id !== courseId; });
@@ -294,6 +340,20 @@
     this.enroll(s1.id, c2.id);
     this.enroll(s2.id, c1.id);
     this.enroll(s3.id, c3.id);
+    this.addQuiz({
+      courseId: c1.id, title: "Week 1 Quiz", grading: "percent", passMark: 50,
+      questions: [
+        { text: "What is a variable?", choices: ["A named box that holds a value", "A kind of loop", "A file on disk"], answer: 0 },
+        { text: "Which of these prints text in Python?", choices: ["show", "print", "say"], answer: 1 },
+      ],
+    });
+    this.addQuiz({
+      courseId: c2.id, title: "Tables Quiz", grading: "passfail", passMark: 50,
+      questions: [
+        { text: "What does a table hold?", choices: ["Rows of the same kind of facts", "Pictures only", "Music"], answer: 0 },
+        { text: "What is a key in a table?", choices: ["A way to find one row", "A password", "A picture"], answer: 0 },
+      ],
+    });
   };
 
   // ---- Singleton: one shared store for the whole app -----------------------
@@ -317,6 +377,7 @@
     createLesson: createLesson,
     createStudent: createStudent,
     createQuiz: createQuiz,
+    gradeStrategies: gradeStrategies,
     MemoryAdapter: MemoryAdapter,
     LocalStorageAdapter: LocalStorageAdapter,
     MockStorage: MockStorage,

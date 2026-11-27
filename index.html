@@ -16,6 +16,7 @@
     <button data-tab="lessons">Lessons</button>
     <button data-tab="students">Students</button>
     <button data-tab="enrollments">Enrolments</button>
+    <button data-tab="quizzes">Quizzes</button>
     <button data-tab="progress">Progress</button>
   </nav>
 </header>
@@ -86,6 +87,39 @@
     <div id="enrollment-list"></div>
   </section>
 
+
+  <section id="tab-quizzes" class="tab" hidden>
+    <h2>Quizzes</h2>
+    <form id="form-quiz">
+      <label>Course <select id="quiz-course"></select></label>
+      <input id="quiz-title" placeholder="Quiz title" required>
+      <label>Marking
+        <select id="quiz-grading">
+          <option value="percent">Percent (0 to 100)</option>
+          <option value="passfail">Pass / fail</option>
+        </select>
+      </label>
+      <input id="quiz-passmark" type="number" min="1" max="100" value="50" title="Pass mark in percent">
+      <h3>Add a question</h3>
+      <input id="question-text" placeholder="Question">
+      <input id="question-c0" placeholder="Choice 1">
+      <input id="question-c1" placeholder="Choice 2">
+      <input id="question-c2" placeholder="Choice 3">
+      <label>Right answer
+        <select id="question-answer">
+          <option value="0">Choice 1</option>
+          <option value="1">Choice 2</option>
+          <option value="2">Choice 3</option>
+        </select>
+      </label>
+      <button type="button" id="btn-add-question">Add question</button>
+      <div id="quiz-questions"></div>
+      <button type="submit">Add quiz</button>
+    </form>
+    <div id="quiz-list"></div>
+    <div id="quiz-take"></div>
+    <p id="quiz-result" role="status"></p>
+  </section>
 
   <section id="tab-progress" class="tab" hidden>
     <h2>Progress</h2>
