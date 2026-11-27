@@ -10,6 +10,6 @@
  * user may read or write. Never put the service_role key here.
  */
 window.CAMPUSLEARN_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseUrl: "https://etbhpcohyjolabmhllrx.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0YmhwY29oeWpvbGFibWhsbHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3ODUzMzYsImV4cCI6MjExMTM2MTMzNn0.cw9uzSEABqzuSzQcYBdWCtBNkHImuDPo8HW7Dantvq0",
 };
