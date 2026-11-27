@@ -6,7 +6,9 @@ This is my Lab 6 project for **CSE 3206 – Software Engineering Sessional (22 S
 
 ## Live demo
 
-<!-- Link added after the repository is made public on GitHub Pages -->
+[![CI](https://github.com/MOZAHID-ISLAM/campuslearn/actions/workflows/ci.yml/badge.svg)](https://github.com/MOZAHID-ISLAM/campuslearn/actions/workflows/ci.yml)
+
+<!-- The live demo link goes here once hosting is set up -->
 
 ## What it does
 
