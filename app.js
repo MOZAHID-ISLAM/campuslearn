@@ -12,9 +12,18 @@
  *    whenever the data changes, so the page never shows old numbers.
  *  - Adapter: the store only talks to a storage adapter. The browser
  *    adapter uses localStorage; the memory adapter keeps data in RAM;
- *    the mock adapter is only for tests and counts how it is used.
+ *    the Supabase adapter keeps data in a real database (Postgres) and
+ *    the database itself enforces who may write what; the mock adapter
+ *    is only for tests and counts how it is used.
  *  - Strategy: a quiz is scored by one of two scoring ways (percent or
  *    pass/fail), chosen by the quiz itself.
+ *
+ * Roles: a signed-in user is either "faculty" or "student". The rules
+ * about who may do what live in can(action, role), and the store itself
+ * refuses work the role may not do. The page hides the buttons too, but
+ * hiding a button is not the real check: the store and the database are.
+ * In demo mode (no backend set up) the role is "demo" and everything is
+ * allowed, because the data only lives in that one browser.
  */
 (function (root) {
   "use strict";
@@ -130,6 +139,20 @@
     return this.saved ? JSON.parse(JSON.stringify(this.saved)) : null;
   };
 
+  // ---- Roles: who may do what ---------------------------------------------
+  // The page hides buttons a role may not use, but that is only for show.
+  // The store itself refuses the work, and the database refuses it too.
+  // "demo" is the role when no backend is set up: the data only lives in
+  // that one browser, so everything is allowed there.
+  const FACULTY_ACTIONS = ["manageCourses", "manageLessons", "manageStudents", "manageQuizzes", "deleteCourse", "viewAllProgress"];
+  const STUDENT_ACTIONS = ["enrol", "takeQuiz", "completeLesson", "viewOwnProgress"];
+  function can(action, role) {
+    if (role === "demo") return true;
+    if (role === "faculty") return FACULTY_ACTIONS.indexOf(action) !== -1 || action === "enrol";
+    if (role === "student") return STUDENT_ACTIONS.indexOf(action) !== -1;
+    return false;
+  }
+
   // ---- Strategy: two ways to score a quiz ----------------------------------
   // Each way is its own small function. The quiz picks which one to use.
   // percent: the result is a number from 0 to 100.
@@ -150,9 +173,34 @@
     this.adapter = adapter || new MemoryAdapter();
     this.data = emptyData();
     this.listeners = [];
+    // Who is using the store right now. Demo mode (no backend) allows all.
+    this.currentUser = { role: "demo", studentId: null, email: null };
     const loaded = this.adapter.load();
     if (loaded) this.data = loaded;
   }
+
+  // The page calls this after sign-in. The store refuses work the role
+  // may not do, whatever the page shows.
+  Store.prototype.setUser = function (user) {
+    this.currentUser = {
+      role: (user && user.role) || "demo",
+      studentId: (user && user.studentId) || null,
+      email: (user && user.email) || null,
+    };
+  };
+  Store.prototype._requireFaculty = function () {
+    if (!can("manageCourses", this.currentUser.role)) {
+      throw new Error("Only faculty can do this. Sign in as faculty to change courses, lessons, students or quizzes.");
+    }
+  };
+  Store.prototype._actingAsStudent = function (studentId) {
+    // A student may only act for themselves. Faculty may act for a student
+    // when they enrol someone; nobody else may. Demo mode allows all.
+    if (this.currentUser.role === "demo") return;
+    if (this.currentUser.role === "faculty") return;
+    if (this.currentUser.role === "student" && this.currentUser.studentId === studentId) return;
+    throw new Error("You can only do this for yourself. Sign in as the right student.");
+  };
 
   Store.prototype.subscribe = function (fn) {
     this.listeners.push(fn);
@@ -179,6 +227,7 @@
   };
 
   Store.prototype.addCourse = function (input) {
+    this._requireFaculty();
     const course = createCourse(input);
     this.data.courses.push(course);
     this._changed();
@@ -186,6 +235,7 @@
   };
 
   Store.prototype.addLesson = function (input) {
+    this._requireFaculty();
     const lesson = createLesson(input);
     this.data.lessons.push(lesson);
     this._changed();
@@ -193,6 +243,7 @@
   };
 
   Store.prototype.addStudent = function (input) {
+    this._requireFaculty();
     const student = createStudent(input);
     this.data.students.push(student);
     this._changed();
@@ -200,6 +251,7 @@
   };
 
   Store.prototype.addQuiz = function (input) {
+    this._requireFaculty();
     const quiz = createQuiz(input);
     this.data.quizzes.push(quiz);
     this._changed();
@@ -214,6 +266,7 @@
   };
 
   Store.prototype.enroll = function (studentId, courseId) {
+    this._actingAsStudent(studentId);
     const student = this.findStudent(studentId);
     if (!student) throw new Error("No student with that id.");
     const course = this.findCourse(courseId);
@@ -241,6 +294,7 @@
   Store.prototype.completeLesson = function (enrollmentId, lessonId) {
     const enrolment = this.data.enrollments.find(function (e) { return e.id === enrollmentId; });
     if (!enrolment) throw new Error("No enrolment with that id.");
+    this._actingAsStudent(enrolment.studentId);
     if (enrolment.completedLessonIds.indexOf(lessonId) === -1) {
       enrolment.completedLessonIds.push(lessonId);
       this._changed();
@@ -249,6 +303,10 @@
   };
 
   Store.prototype.submitQuiz = function (quizId, studentId, answers) {
+    this._actingAsStudent(studentId);
+    if (this.currentUser.role === "faculty") {
+      throw new Error("Faculty cannot take a quiz. Only the student can.");
+    }
     const quiz = this.data.quizzes.find(function (q) { return q.id === quizId; });
     if (!quiz) throw new Error("No quiz with that id.");
     // Only a student enrolled in the quiz's course may take it.
@@ -280,6 +338,7 @@
   };
 
   Store.prototype.deleteCourse = function (courseId) {
+    this._requireFaculty();
     const keep = function (list, test) { return list.filter(test); };
     this.data.courses = keep(this.data.courses, function (c) { return c.id !== courseId; });
     this.data.lessons = keep(this.data.lessons, function (l) { return l.courseId !== courseId; });
@@ -373,6 +432,7 @@
   }
 
   const api = {
+    can: can,
     createCourse: createCourse,
     createLesson: createLesson,
     createStudent: createStudent,

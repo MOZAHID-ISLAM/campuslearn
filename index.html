@@ -10,6 +10,7 @@
 <header>
   <h1>CampusLearn</h1>
   <p>Online learning for our campus: courses, lessons, students, enrolments, quizzes and progress, all in one place.</p>
+  <div id="auth-bar"></div>
   <nav id="tabs">
     <button data-tab="dashboard" class="active">Dashboard</button>
     <button data-tab="courses">Courses</button>
@@ -28,9 +29,10 @@
     <h2>Dashboard</h2>
     <div id="counts" class="cards"></div>
     <h3>Your data</h3>
-    <p>Your data is saved in this browser, so it is still here when you come back.</p>
+    <p id="demo-note">Your data is saved in this browser, so it is still here when you come back.</p>
+    <p id="backend-note" hidden>Your data is saved in the CampusLearn database, so it is the same on every device you sign in with.</p>
     <div class="row">
-      <button id="btn-demo">Load demo data</button>
+      <button id="btn-demo" data-faculty-only>Load demo data</button>
       <button id="btn-export">Download my data (JSON)</button>
       <label class="file-btn">Bring back my data (JSON)
         <input type="file" id="file-import" accept="application/json" hidden>
@@ -44,7 +46,7 @@
   <section id="tab-courses" class="tab" hidden>
     <h2>Courses</h2>
     <input id="course-search" type="search" placeholder="Search by title or teacher...">
-    <form id="form-course">
+    <form id="form-course" data-faculty-only>
       <input id="course-title" placeholder="Course title" required>
       <input id="course-teacher" placeholder="Teacher name" required>
       <input id="course-desc" placeholder="Short description">
@@ -59,7 +61,7 @@
     <label>Course
       <select id="lesson-course"></select>
     </label>
-    <form id="form-lesson">
+    <form id="form-lesson" data-faculty-only>
       <input id="lesson-title" placeholder="Lesson title" required>
       <input id="lesson-content" placeholder="What is this lesson about?">
       <button type="submit">Add lesson</button>
@@ -69,7 +71,7 @@
 
   <section id="tab-students" class="tab" hidden>
     <h2>Students</h2>
-    <form id="form-student">
+    <form id="form-student" data-faculty-only>
       <input id="student-name" placeholder="Student name" required>
       <input id="student-email" type="email" placeholder="Email" required>
       <button type="submit">Add student</button>
@@ -90,7 +92,7 @@
 
   <section id="tab-quizzes" class="tab" hidden>
     <h2>Quizzes</h2>
-    <form id="form-quiz">
+    <form id="form-quiz" data-faculty-only>
       <label>Course <select id="quiz-course"></select></label>
       <input id="quiz-title" placeholder="Quiz title" required>
       <label>Marking
@@ -130,10 +132,14 @@
 </main>
 
 <footer>
-  <p>CampusLearn — CSE 3206 Software Engineering Sessional, Lab 6. Data stays in your browser.</p>
+  <p>CampusLearn — CSE 3206 Software Engineering Sessional, Lab 6. Faculty manage courses; students enrol, learn and take quizzes.</p>
 </footer>
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="app.js"></script>
+<script src="auth.js"></script>
+<script src="supabase-adapter.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>
