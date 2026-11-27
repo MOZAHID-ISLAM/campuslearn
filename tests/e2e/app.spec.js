@@ -60,12 +60,13 @@ test("a teacher can delete a course they added", async ({ page }) => {
   await page.fill("#course-teacher", "Dr. Hossain");
   await page.getByRole("button", { name: "Add course" }).click();
   await expect(page.locator("#course-list")).toContainText("Temporary Course");
-  // Deleting asks for confirmation; accept it like a person would.
-  page.on("dialog", (dialog) => dialog.accept());
+  // Deleting takes two clicks on the same button: the first click arms
+  // it, the second deletes. There is no confirmation dialog.
   await page
     .locator("#course-list li", { hasText: "Temporary Course" })
     .getByRole("button", { name: "Delete" })
     .click();
+  await page.getByRole("button", { name: "Click again to delete" }).click();
   await expect(page.locator("#course-list")).not.toContainText("Temporary Course");
   await expect(page.locator("#msg")).toContainText("Course deleted.");
 });
